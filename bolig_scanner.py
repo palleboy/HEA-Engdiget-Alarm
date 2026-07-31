@@ -37,7 +37,7 @@ async def hent_boliger():
         ).all()
 
         for link in links:
-
+print("Fandt link:", await link.inner_text())
             tekst = await link.inner_text()
 
             href = await link.get_attribute(
