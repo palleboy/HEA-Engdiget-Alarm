@@ -44,7 +44,7 @@ async def hent_boliger():
                 and "ENGDIGET" in tekst.upper()
             ):
 
-                print("Fundet Engdiget:", tekst[:200])
+        
 
                 link = await element.get_attribute(
                     "href"
