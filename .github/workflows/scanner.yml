@@ -1,0 +1,27 @@
+name: HEA Engdiget Alarm
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Hent kode
+        uses: actions/checkout@v4
+
+      - name: Opsæt Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer pakker
+        run: |
+          pip install -r requirements.txt
+
+      - name: Kør scanner
+        run: |
+          python bolig_scanner.py
