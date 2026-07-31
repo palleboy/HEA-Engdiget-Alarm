@@ -1,7 +1,8 @@
-import requests
-from bs4 import BeautifulSoup
+import asyncio
+from playwright.async_api import async_playwright
 import json
 import os
+
 
 HEA_URL = "https://hea.dk/lejemaal/"
 
@@ -13,45 +14,48 @@ TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 
-def hent_boliger():
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 "
-            "(KHTML, like Gecko) "
-            "Chrome/120.0 Safari/537.36"
-        )
-    }
-
-    svar = requests.get(
-        HEA_URL,
-        headers=headers,
-        timeout=30
-    )
-
-    svar.raise_for_status()
-
-    soup = BeautifulSoup(
-        svar.text,
-        "html.parser"
-    )
+async def hent_boliger():
 
     boliger = []
 
-    for link in soup.find_all("a", href=True):
+    async with async_playwright() as p:
 
-        tekst = link.get_text(
-            " ",
-            strip=True
+        browser = await p.chromium.launch(
+            headless=True
         )
 
-        if SOGEORD.lower() in tekst.lower():
+        page = await browser.new_page()
 
-            boliger.append({
-                "navn": tekst,
-                "link": link["href"]
-            })
+        await page.goto(
+            HEA_URL,
+            wait_until="networkidle",
+            timeout=60000
+        )
+
+        links = await page.locator(
+            "a"
+        ).all()
+
+        for link in links:
+
+            tekst = await link.inner_text()
+
+            href = await link.get_attribute(
+                "href"
+            )
+
+            if (
+                tekst
+                and SOGEORD.lower()
+                in tekst.lower()
+            ):
+
+                boliger.append({
+                    "navn": tekst.strip(),
+                    "link": href
+                })
+
+        await browser.close()
 
     return boliger
 
@@ -74,6 +78,8 @@ def gem(gamle):
 
 def send_telegram(besked):
 
+    import requests
+
     url = (
         f"https://api.telegram.org/"
         f"bot{TELEGRAM_TOKEN}/sendMessage"
@@ -88,30 +94,33 @@ def send_telegram(besked):
     )
 
 
-def main():
+async def main():
 
     gamle = hent_gamle()
 
-    fundet = hent_boliger()
+    fundet = await hent_boliger()
 
     nye = []
 
     for bolig in fundet:
 
         if bolig["link"] not in gamle:
+
             nye.append(bolig)
 
 
     if nye:
 
-        besked = "🏠 NY LEJLIGHED PÅ ENGDIGET!\n\n"
+        besked = (
+            "🏠 NY LEJLIGHED PÅ ENGDIGET!\n\n"
+        )
 
         for bolig in nye:
 
             besked += (
                 bolig["navn"]
                 + "\n"
-                + bolig["link"]
+                + str(bolig["link"])
                 + "\n\n"
             )
 
@@ -119,7 +128,9 @@ def main():
                 bolig["link"]
             )
 
-        send_telegram(besked)
+        send_telegram(
+            besked
+        )
 
     else:
 
@@ -132,4 +143,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
