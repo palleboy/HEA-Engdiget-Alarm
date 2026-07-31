@@ -2,6 +2,7 @@ import asyncio
 from playwright.async_api import async_playwright
 import json
 import os
+import requests
 
 
 HEA_URL = "https://hea.dk/lejemaal/"
@@ -32,47 +33,81 @@ async def hent_boliger():
             timeout=60000
         )
 
+        print("Side åbnet:", page.url)
+
+        tekst = await page.locator(
+            "body"
+        ).inner_text()
+
+        print("Tekst fra siden:")
+        print(tekst[:2000])
+
+
         links = await page.locator(
             "a"
         ).all()
 
-        
+
+        for link in links:
+
+            navn = await link.inner_text()
+
+            url = await link.get_attribute(
+                "href"
+            )
+
+
+            if navn:
+
+                print(
+                    "Fandt link:",
+                    navn.strip()
+                )
+
 
             if (
-                tekst
+                navn
                 and SOGEORD.lower()
-                in tekst.lower()
+                in navn.lower()
             ):
 
-for link in links:
+                boliger.append(
+                    {
+                        "navn": navn.strip(),
+                        "link": url
+                    }
+                )
 
-    tekst = await link.inner_text()
-
-    print("Fandt link:", tekst)
-
-    href = await link.get_attribute(
-        "href"
-    )
-                
-                boliger.append({
-                    "navn": tekst.strip(),
-                    "link": href
-                })
 
         await browser.close()
+
 
     return boliger
 
 
+
 def hent_gamle():
 
-    with open(FIL, "r") as f:
+    if not os.path.exists(FIL):
+
+        return []
+
+    with open(
+        FIL,
+        "r"
+    ) as f:
+
         return json.load(f)
+
 
 
 def gem(gamle):
 
-    with open(FIL, "w") as f:
+    with open(
+        FIL,
+        "w"
+    ) as f:
+
         json.dump(
             gamle,
             f,
@@ -80,14 +115,14 @@ def gem(gamle):
         )
 
 
+
 def send_telegram(besked):
 
-    import requests
-
     url = (
-        f"https://api.telegram.org/"
+        "https://api.telegram.org/"
         f"bot{TELEGRAM_TOKEN}/sendMessage"
     )
+
 
     requests.post(
         url,
@@ -98,55 +133,73 @@ def send_telegram(besked):
     )
 
 
+
 async def main():
 
     gamle = hent_gamle()
 
     fundet = await hent_boliger()
 
+
     nye = []
+
 
     for bolig in fundet:
 
         if bolig["link"] not in gamle:
 
-            nye.append(bolig)
+            nye.append(
+                bolig
+            )
 
 
     if nye:
 
-    besked = "🏠 Ny bolig fundet på Engdiget!\n\n"
-
-    for bolig in nye:
-
-        besked += (
-            "📍 "
-            + bolig["navn"]
-            + "\n"
+        besked = (
+            "🏠 NY LEJLIGHED PÅ ENGDIGET!\n\n"
         )
 
-        besked += (
-            "🔗 "
-            + str(bolig["link"])
-            + "\n\n"
+
+        for bolig in nye:
+
+            besked += (
+                "📍 "
+                + bolig["navn"]
+                + "\n"
+            )
+
+            besked += (
+                "🔗 "
+                + str(bolig["link"])
+                + "\n\n"
+            )
+
+
+            gamle.append(
+                bolig["link"]
+            )
+
+
+        send_telegram(
+            besked
         )
 
-        gamle.append(
-            bolig["link"]
-        )
 
-    send_telegram(
-        besked
-    )
     else:
 
         print(
-            "Ingen nye lejligheder"
+            "Ingen nye Engdiget boliger fundet"
         )
 
 
-    gem(gamle)
+    gem(
+        gamle
+    )
+
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+
+    asyncio.run(
+        main()
+            )
