@@ -36,13 +36,7 @@ async def hent_boliger():
             "a"
         ).all()
 
-        for link in links:
-print("Fandt link:", await link.inner_text())
-            tekst = await link.inner_text()
-
-            href = await link.get_attribute(
-                "href"
-            )
+        
 
             if (
                 tekst
@@ -50,6 +44,16 @@ print("Fandt link:", await link.inner_text())
                 in tekst.lower()
             ):
 
+for link in links:
+
+    tekst = await link.inner_text()
+
+    print("Fandt link:", tekst)
+
+    href = await link.get_attribute(
+        "href"
+    )
+                
                 boliger.append({
                     "navn": tekst.strip(),
                     "link": href
