@@ -125,10 +125,10 @@ async def main():
 
     for bolig in fundet:
 
-        if bolig["link"] not in gamle:
-
-            nye.append(
-                bolig
+        if bolig not in gamle:
+            
+            gamle.append(
+    bolig
             )
 
 
