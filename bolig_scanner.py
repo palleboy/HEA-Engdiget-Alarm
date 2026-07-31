@@ -143,9 +143,4 @@ async def main():
 
 
 if __name__ == "__main__":
-
-    send_telegram(
-        "✅ Test fra HEA Engdiget Alarm\n\nTelegram virker!"
-    )
-
     asyncio.run(main())
