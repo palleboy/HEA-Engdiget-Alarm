@@ -7,7 +7,7 @@ import requests
 
 HEA_URL = "https://hea.dk/lejemaal/"
 
-SOGEORD = "engdiget"
+SOGEORD = "ENGDIGET"
 
 FIL = "sete_boliger.json"
 
@@ -33,36 +33,31 @@ async def hent_boliger():
             timeout=60000
         )
 
-        kort = await page.locator("a").all()
+        links = await page.locator("a").all()
 
-        for element in kort:
+        for link in links:
 
-            tekst = await element.inner_text()
+            tekst = await link.inner_text()
+
+            href = await link.get_attribute(
+                "href"
+            )
 
             if (
                 tekst
-                and "ENGDIGET" in tekst.upper()
+                and SOGEORD in tekst.upper()
             ):
-
-        
-
-                link = await element.get_attribute(
-                    "href"
-                )
 
                 boliger.append(
                     {
                         "navn": tekst.strip(),
-                        "link": link
+                        "link": href
                     }
                 )
 
-
         await browser.close()
 
-
     return boliger
-
 
 
 def hent_gamle():
@@ -102,7 +97,6 @@ def send_telegram(besked):
         f"bot{TELEGRAM_TOKEN}/sendMessage"
     )
 
-
     requests.post(
         url,
         data={
@@ -119,55 +113,53 @@ async def main():
 
     fundet = await hent_boliger()
 
-
     nye = []
 
 
     for bolig in fundet:
 
         if bolig not in gamle:
-            
-            gamle.append(
-    bolig
+
+            nye.append(
+                bolig
             )
 
 
     if nye:
 
         besked = (
-            "🏠 NY LEJLIGHED PÅ ENGDIGET!\n\n"
+            "🚨 NYT HEA OPSLAG PÅ ENGDIGET\n\n"
         )
 
 
         for bolig in nye:
 
+            linjer = bolig["navn"].split("\n")
+
             besked += (
                 "📍 "
-                + bolig["navn"]
-                + "\n"
+                + linjer[0]
+                + "\n\n"
             )
 
             besked += (
-                "🔗 "
+                bolig["navn"]
+                + "\n\n"
+            )
+
+            besked += (
+                "🔗 Link:\n"
                 + str(bolig["link"])
                 + "\n\n"
             )
 
-
             gamle.append(
-                bolig["link"]
+                bolig
             )
 
 
         send_telegram(
             besked
-        )
-
-
-    else:
-
-        print(
-            "Ingen nye Engdiget boliger fundet"
         )
 
 
@@ -181,4 +173,4 @@ if __name__ == "__main__":
 
     asyncio.run(
         main()
-            )
+    )
