@@ -33,48 +33,25 @@ async def hent_boliger():
             timeout=60000
         )
 
-        print("Side åbnet:", page.url)
+        kort = await page.locator("a").all()
 
-        tekst = await page.locator(
-            "body"
-        ).inner_text()
+        for element in kort:
 
-        print("Tekst fra siden:")
-        print(tekst[:2000])
-
-
-        links = await page.locator(
-            "a"
-        ).all()
-
-
-        for link in links:
-
-            navn = await link.inner_text()
-
-            url = await link.get_attribute(
-                "href"
-            )
-
-
-            if navn:
-
-                print(
-                    "Fandt link:",
-                    navn.strip()
-                )
-
+            tekst = await element.inner_text()
 
             if (
-                navn
-                and SOGEORD.lower()
-                in navn.lower()
+                tekst
+                and "ENGDIGET" in tekst.upper()
             ):
+
+                link = await element.get_attribute(
+                    "href"
+                )
 
                 boliger.append(
                     {
-                        "navn": navn.strip(),
-                        "link": url
+                        "navn": tekst.strip(),
+                        "link": link
                     }
                 )
 
