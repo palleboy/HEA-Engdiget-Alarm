@@ -111,27 +111,29 @@ async def main():
 
     if nye:
 
-        besked = (
-            "🏠 NY LEJLIGHED PÅ ENGDIGET!\n\n"
+    besked = "🏠 Ny bolig fundet på Engdiget!\n\n"
+
+    for bolig in nye:
+
+        besked += (
+            "📍 "
+            + bolig["navn"]
+            + "\n"
         )
 
-        for bolig in nye:
-
-            besked += (
-                bolig["navn"]
-                + "\n"
-                + str(bolig["link"])
-                + "\n\n"
-            )
-
-            gamle.append(
-                bolig["link"]
-            )
-
-        send_telegram(
-            besked
+        besked += (
+            "🔗 "
+            + str(bolig["link"])
+            + "\n\n"
         )
 
+        gamle.append(
+            bolig["link"]
+        )
+
+    send_telegram(
+        besked
+    )
     else:
 
         print(
