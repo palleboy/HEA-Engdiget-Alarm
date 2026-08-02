@@ -1,8 +1,9 @@
 import asyncio
-from playwright.async_api import async_playwright
 import json
 import os
+
 import requests
+from playwright.async_api import async_playwright
 
 HEA_URL = "https://hea.dk/lejemaal/"
 SOGEORD = "ENGDIGET"
@@ -16,7 +17,6 @@ async def hent_boliger():
     boliger = []
 
     async with async_playwright() as p:
-
         browser = await p.chromium.launch(headless=True)
 
         page = await browser.new_page()
@@ -31,44 +31,46 @@ async def hent_boliger():
 
         for link in links:
 
-            tekst = await link.inner_text()
+            tekst = (await link.inner_text()).strip()
             href = await link.get_attribute("href")
 
-            if (
-                tekst
-                and href
-                and SOGEORD in tekst.upper()
-            ):
+            if not tekst or not href:
+                continue
 
-                if href.startswith("/"):
-                    href = "https://hea.dk" + href
+            if SOGEORD not in tekst.upper():
+                continue
 
-                boliger.append(
-                    {
-                        "navn": tekst.strip(),
-                        "link": href.strip(),
-                    }
-                )
+            if href.startswith("/"):
+                href = "https://hea.dk" + href
+
+            boliger.append(
+                {
+                    "navn": tekst,
+                    "link": href.strip(),
+                }
+            )
 
         await browser.close()
 
     return boliger
 
 
-def hent_gamle():
+def hent_gamle_links():
 
     if not os.path.exists(FIL):
-        return []
+        return set()
 
     with open(FIL, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+
+    return set(data)
 
 
-def gem(gamle):
+def gem_links(links):
 
     with open(FIL, "w", encoding="utf-8") as f:
         json.dump(
-            gamle,
+            sorted(list(links)),
             f,
             ensure_ascii=False,
             indent=2,
@@ -77,12 +79,8 @@ def gem(gamle):
 
 def send_telegram(besked):
 
-    url = (
-        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    )
-
     requests.post(
-        url,
+        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
         data={
             "chat_id": TELEGRAM_CHAT_ID,
             "text": besked,
@@ -93,12 +91,7 @@ def send_telegram(besked):
 
 async def main():
 
-    gamle = hent_gamle()
-
-    gamle_links = {
-        bolig["link"]
-        for bolig in gamle
-    }
+    gamle_links = hent_gamle_links()
 
     fundet = await hent_boliger()
 
@@ -108,17 +101,15 @@ async def main():
 
         if bolig["link"] not in gamle_links:
 
-            print("Ny annonce:", bolig["link"])
-
-            nye.append(bolig)
-
-            gamle.append(bolig)
+            print(f"NY: {bolig['link']}")
 
             gamle_links.add(bolig["link"])
 
+            nye.append(bolig)
+
         else:
 
-            print("Annonce allerede kendt:", bolig["link"])
+            print(f"Kendt: {bolig['link']}")
 
     if nye:
 
@@ -131,7 +122,7 @@ async def main():
 
         send_telegram(besked)
 
-    gem(gamle)
+    gem_links(gamle_links)
 
 
 if __name__ == "__main__":
